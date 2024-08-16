@@ -35,42 +35,38 @@ import os
 import glob
 
 def split_csv_file(file_path, num_parts):
+    # Determine the size of each part
+    total_lines = sum(1 for line in open(file_path, 'r', encoding='utf-8'))
+    part_size = total_lines // num_parts
+    
+    # Create a directory to store the split parts
+    base_name = os.path.basename(file_path)
+    dir_name = f"{base_name}_splitted"
+    os.makedirs(dir_name, exist_ok=True)
+    
     with open(file_path, 'r', newline='', encoding='utf-8') as csvfile:
         csvreader = csv.reader(csvfile)
         header = next(csvreader)  # Read the first row as the header
-        rows = list(csvreader)    # Read all remaining rows into a list
-
-    total_rows = len(rows)
-    rows_per_part = total_rows // num_parts
-    extra_rows = total_rows % num_parts
-
-    # Create a new directory for the split files
-    base_name = os.path.basename(file_path)
-    name_without_ext = os.path.splitext(base_name)[0]
-    output_dir = f'{name_without_ext}_splitted'
-    os.makedirs(output_dir, exist_ok=True)
-
-    for part in range(num_parts):
-        part_file_path = os.path.join(output_dir, f'part_{part + 1}.csv')
-        start_idx = part * rows_per_part
-        end_idx = start_idx + rows_per_part
-        if part < extra_rows:
-            end_idx += 1
-        part_rows = rows[start_idx:end_idx]
-
-        with open(part_file_path, 'w', newline='', encoding='utf-8') as part_file:
-            csvwriter = csv.writer(part_file)
-            csvwriter.writerow(header)  # Write the header to each part file
-            csvwriter.writerows(part_rows)
         
-        print(f'Created {part_file_path} with {len(part_rows)} rows')
+        for part_num in range(1, num_parts + 1):
+            part_file_name = os.path.join(dir_name, f'part_{part_num}.csv')
+            with open(part_file_name, 'w', newline='', encoding='utf-8') as part_file:
+                csvwriter = csv.writer(part_file)
+                csvwriter.writerow(header)  # Write the header to each part
+                
+                if part_num < num_parts:
+                    for _ in range(part_size):
+                        csvwriter.writerow(next(csvreader))
+                else:
+                    # Write the rest of the file in the last part
+                    for row in csvreader:
+                        csvwriter.writerow(row)
+
+def main():
+    csv_files = glob.glob('*.csv')
+    num_parts = int(input("Enter the number of parts to split each CSV file into: "))
+    for csv_file in csv_files:
+        split_csv_file(csv_file, num_parts)
 
 if __name__ == '__main__':
-    num_parts = int(input('Enter the number of parts to split the CSV into: '))
-    # Find all CSV files in the same directory as the script
-    csv_files = glob.glob('*.csv')
-    if not csv_files:
-        print('No CSV files found in the directory.')
-    else:
-        for file_path in csv_files:
-            split_csv_file(file_path, num_parts)
+    main()
